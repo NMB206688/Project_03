@@ -1,170 +1,98 @@
-// server/src/controllers/feedbackController.js
+const Feedback = require('../models/Feedback');
 
-const mongoose = require('mongoose');
-const { Feedback, FEEDBACK_STATUS, FEEDBACK_CATEGORIES } = require('../models/Feedback');
-
-/**
- * POST /api/v1/feedback
- * Body: { title, body, category?, isAnonymous? }
- * - If authenticated, we attach createdBy unless isAnonymous=true
- * - Anonymous submissions are allowed (no token required)
- */
-async function createFeedback(req, res) {
+exports.createFeedback = async (req, res) => {
   try {
-    const { title, body, category = 'other', isAnonymous = false } = req.body || {};
+    const { title, body, category = 'other', isAnonymous = true } = req.body;
+    if (!title?.trim() || !body?.trim()) return res.status(400).json({ error: 'Title and details are required' });
 
-    // Basic validation (lightweight for MVP)
-    if (!title || !body) {
-      return res.status(400).json({ error: 'title and body are required' });
-    }
-    if (!FEEDBACK_CATEGORIES.includes(category)) {
-      return res.status(400).json({ error: `category must be one of: ${FEEDBACK_CATEGORIES.join(', ')}` });
-    }
+    const createdBy = isAnonymous ? null : (req.user?.id || null);
+    const doc = await Feedback.create({ title: title.trim(), body: body.trim(), category, isAnonymous, createdBy });
 
-    const doc = await Feedback.create({
-      title: String(title).trim(),
-      body: String(body).trim(),
-      category,
-      isAnonymous: !!isAnonymous,
-      createdBy: isAnonymous ? undefined : req.user?.id, // attach if logged-in & not anonymous
-    });
-
-    // Hide creator if anonymous
-    const safe = {
-      id: doc._id,
-      title: doc.title,
-      body: doc.body,
-      category: doc.category,
-      status: doc.status,
-      isAnonymous: doc.isAnonymous,
-      createdBy: doc.isAnonymous ? null : doc.createdBy,
-      createdAt: doc.createdAt,
-      updatedAt: doc.updatedAt,
-    };
-
-    return res.status(201).json({ feedback: safe });
-  } catch (e) {
-    console.error('createFeedback error:', e);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(201).json({ feedback: serialize(doc) });
+  } catch (err) {
+    console.error('createFeedback error:', err);
+    return res.status(500).json({ error: 'Could not create feedback' });
   }
-}
+};
 
 /**
- * GET /api/v1/feedback
- * Query (optional):
- *   - page (default 1), limit (default 10)
- *   - status (open|in_review|resolved)
- *   - category (bug|feature|ux|process|other)
- *   - q (text search in title/body)
- *   - sort (createdAt, -createdAt, status, category)
+ * List feedback.
+ * - Admin: all feedback.
+ * - Authenticated user: their own feedback only.
+ * - Not authed: empty set by default (you can relax if you want).
  */
-async function listFeedback(req, res) {
+exports.listFeedback = async (req, res) => {
   try {
-    const page = Math.max(parseInt(req.query.page || '1', 10), 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || '8', 10)));
     const skip = (page - 1) * limit;
 
-    // Build filters
+    const sort = req.query.sort || '-createdAt';
+    const status = req.query.status || undefined; // open/in_review/resolved
+    const category = req.query.category || undefined; // bug/...
+    const q = req.query.q?.trim();
+
     const filter = {};
-    if (req.query.status && FEEDBACK_STATUS.includes(req.query.status)) {
-      filter.status = req.query.status;
-    }
-    if (req.query.category && FEEDBACK_CATEGORIES.includes(req.query.category)) {
-      filter.category = req.query.category;
-    }
-    if (req.query.q) {
-      const q = String(req.query.q).trim();
+    if (status) filter.status = status;
+    if (category && category !== 'all') filter.category = category;
+
+    if (q) {
       filter.$or = [
         { title: { $regex: q, $options: 'i' } },
-        { body: { $regex: q, $options: 'i' } },
+        { body:  { $regex: q, $options: 'i' } },
       ];
     }
 
-    // Sort handling
-    const sortParam = String(req.query.sort || '-createdAt');
-    const sort = {};
-    if (sortParam.startsWith('-')) {
-      sort[sortParam.substring(1)] = -1;
-    } else {
-      sort[sortParam] = 1;
+    // Role-based visibility
+    if (!req.user) {
+      // unauthenticated: no listing (or show nothing)
+      filter._id = { $in: [] };
+    } else if (req.user.role !== 'admin') {
+      filter.createdBy = req.user.id;
     }
 
-    const [items, total] = await Promise.all([
-      Feedback.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+    const [total, docs] = await Promise.all([
       Feedback.countDocuments(filter),
+      Feedback.find(filter).sort(sort).skip(skip).limit(limit),
     ]);
 
-    // Redact creator if anonymous and caller is not admin
-    const isAdmin = req.user?.role === 'admin';
-    const data = items.map((doc) => ({
-      id: doc._id,
-      title: doc.title,
-      body: doc.body,
-      category: doc.category,
-      status: doc.status,
-      isAnonymous: !!doc.isAnonymous,
-      createdBy: doc.isAnonymous && !isAdmin ? null : doc.createdBy,
-      assignedTo: doc.assignedTo || null,
-      createdAt: doc.createdAt,
-      updatedAt: doc.updatedAt,
-    }));
-
     return res.json({
-      page,
-      limit,
-      total,
-      results: data,
+      page, limit, total,
+      results: docs.map(serialize),
     });
-  } catch (e) {
-    console.error('listFeedback error:', e);
-    return res.status(500).json({ error: 'Internal server error' });
+  } catch (err) {
+    console.error('listFeedback error:', err);
+    return res.status(500).json({ error: 'Could not list feedback' });
   }
-}
+};
 
-/**
- * PATCH /api/v1/feedback/:id/status
- * Body: { status } where status ∈ FEEDBACK_STATUS
- * - Admin only (enforced by middleware on route)
- */
-async function updateStatus(req, res) {
+exports.updateStatus = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status } = req.body || {};
+    const id = req.params.id;
+    const { status } = req.body;
+    if (!['open','in_review','resolved'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ error: 'Invalid id' });
-    }
-    if (!FEEDBACK_STATUS.includes(status)) {
-      return res.status(400).json({ error: `status must be one of: ${FEEDBACK_STATUS.join(', ')}` });
-    }
+    const doc = await Feedback.findByIdAndUpdate(id, { status }, { new: true });
+    if (!doc) return res.status(404).json({ error: 'Not found' });
 
-    const doc = await Feedback.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    ).lean();
-
-    if (!doc) return res.status(404).json({ error: 'Feedback not found' });
-
-    const isAdmin = req.user?.role === 'admin';
-    return res.json({
-      feedback: {
-        id: doc._id,
-        title: doc.title,
-        body: doc.body,
-        category: doc.category,
-        status: doc.status,
-        isAnonymous: !!doc.isAnonymous,
-        createdBy: doc.isAnonymous && !isAdmin ? null : doc.createdBy,
-        assignedTo: doc.assignedTo || null,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-      },
-    });
-  } catch (e) {
-    console.error('updateStatus error:', e);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.json({ feedback: serialize(doc) });
+  } catch (err) {
+    console.error('updateStatus error:', err);
+    return res.status(500).json({ error: 'Could not update status' });
   }
-}
+};
 
-module.exports = { createFeedback, listFeedback, updateStatus };
+function serialize(f) {
+  return {
+    id: f.id,
+    title: f.title,
+    body: f.body,
+    category: f.category,
+    status: f.status,
+    isAnonymous: f.isAnonymous,
+    createdBy: f.createdBy,
+    assignedTo: f.assignedTo,
+    createdAt: f.createdAt,
+    updatedAt: f.updatedAt,
+  };
+}

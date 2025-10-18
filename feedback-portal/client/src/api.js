@@ -1,37 +1,31 @@
-// client/src/api.js
 import axios from "axios";
+import { getToken } from "./auth";
 
-// Base URL from .env.development (Vite)
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api/v1";
-
-// One axios instance for the whole app
 const api = axios.create({
-  baseURL: API_BASE,
-  headers: { "Content-Type": "application/json" },
-  timeout: 10000,
+  baseURL: import.meta.env.VITE_API_BASE,
+  timeout: 15000,
 });
 
-// Attach JWT if present
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Small helpers to keep components clean
 export const AuthAPI = {
-  login: (email, password) => api.post("/auth/login", { email, password }),
-  register: (name, email, password, role = "user") =>
-    api.post("/auth/register", { name, email, password, role }),
+  login(email, password) { return api.post("/auth/login", { email, password }); },
+  register(name, email, password) { return api.post("/auth/register", { name, email, password }); },
 };
 
 export const FeedbackAPI = {
-  create: (payload) => api.post("/feedback", payload),
-  list: (params) => api.get("/feedback", { params }),
-  updateStatus: (id, status) => api.patch(`/feedback/${id}/status`, { status }),
+  create({ title, body, category = "other", isAnonymous = true }) {
+    return api.post("/feedback", { title, body, category, isAnonymous });
+  },
+  list(params = {}) { return api.get("/feedback", { params }); },
+  updateStatus(id, status) { return api.patch(`/feedback/${id}/status`, { status }); },
   comments: {
-    add: (id, body) => api.post(`/feedback/${id}/comments`, { body }),
-    list: (id) => api.get(`/feedback/${id}/comments`),
+    list(id) { return api.get(`/feedback/${id}/comments`); },
+    add(id, body) { return api.post(`/feedback/${id}/comments`, { body }); },
   },
 };
 

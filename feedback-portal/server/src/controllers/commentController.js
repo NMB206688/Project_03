@@ -1,84 +1,88 @@
-// server/src/controllers/commentController.js
-
-const mongoose = require('mongoose');
-const { Comment } = require('../models/Comment');
-const { Feedback } = require('../models/Feedback');
+const Comment = require('../models/Comment');
+const Feedback = require('../models/Feedback');
 
 /**
- * POST /api/v1/feedback/:id/comments
- * Body: { body }
- * Admin only (middleware enforces)
+ * Anyone who can see the feedback can see the comments for that feedback.
+ * - Admin: any feedback
+ * - User: only their own feedback
  */
-async function addComment(req, res) {
+exports.listComments = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { body } = req.body || {};
+    const id = req.params.id;
+    const fb = await Feedback.findById(id);
+    if (!fb) return res.status(404).json({ error: 'Feedback not found' });
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ error: 'Invalid feedback id' });
+    // Visibility gate
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    if (req.user.role !== 'admin' && String(fb.createdBy) !== req.user.id) {
+      return res.status(403).json({ error: 'Forbidden' });
     }
-    if (!body || String(body).trim().length === 0) {
-      return res.status(400).json({ error: 'Comment body is required' });
-    }
 
-    // Ensure feedback exists (avoid orphan comments)
-    const exists = await Feedback.exists({ _id: id });
-    if (!exists) return res.status(404).json({ error: 'Feedback not found' });
-
-    const doc = await Comment.create({
-      feedbackId: id,
-      author: req.user.id,     // set by requireAuth
-      body: String(body).trim(),
-      visibility: 'internal',  // MVP: internal only
+    const comments = await Comment.find({ feedbackId: id }).sort('createdAt');
+    return res.json({
+      results: comments.map(c => ({
+        id: c.id, feedbackId: c.feedbackId, author: c.author, body: c.body,
+        authorRole: c.authorRole, createdAt: c.createdAt, updatedAt: c.updatedAt
+      }))
     });
-
-    res.status(201).json({
-      comment: {
-        id: doc._id,
-        feedbackId: doc.feedbackId,
-        author: doc.author,
-        body: doc.body,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-      },
-    });
-  } catch (e) {
-    console.error('addComment error:', e);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (err) {
+    console.error('listComments error:', err);
+    return res.status(500).json({ error: 'Could not fetch comments' });
   }
-}
+};
 
 /**
- * GET /api/v1/feedback/:id/comments
- * Anyone can fetch the thread (still internal for MVP; fine for demo)
+ * Add comment:
+ * - Admin: can always comment on any feedback.
+ * - User: can comment only on their own feedback AND only if
+ *   at least one admin comment exists AND the last comment is not by the user
+ *   (prevents double-posting by user).
  */
-async function listComments(req, res) {
+exports.addComment = async (req, res) => {
   try {
-    const { id } = req.params;
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ error: 'Invalid feedback id' });
+    const id = req.params.id;
+    const body = (req.body.body || '').trim();
+    if (!body) return res.status(400).json({ error: 'Comment cannot be empty' });
+
+    const fb = await Feedback.findById(id);
+    if (!fb) return res.status(404).json({ error: 'Feedback not found' });
+
+    if (req.user.role === 'admin') {
+      const created = await Comment.create({
+        feedbackId: id, author: req.user.id, authorRole: 'admin', body
+      });
+      return res.status(201).json({ comment: serialize(created) });
     }
 
-    // Return newest first (matches our index)
-    const items = await Comment.find({ feedbackId: id })
-      .sort({ createdAt: -1 })
-      .lean();
+    // user flow — only their own feedback
+    if (String(fb.createdBy) !== req.user.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
-    const results = items.map((c) => ({
-      id: c._id,
-      feedbackId: c.feedbackId,
-      author: c.author,      // could populate later
-      body: c.body,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-    }));
+    const comments = await Comment.find({ feedbackId: id }).sort('createdAt');
+    const hasAdmin = comments.some(c => c.authorRole === 'admin');
+    if (!hasAdmin) return res.status(400).json({ error: 'You can reply after an admin responds.' });
 
-    res.json({ results, total: results.length });
-  } catch (e) {
-    console.error('listComments error:', e);
-    res.status(500).json({ error: 'Internal server error' });
+    const last = comments[comments.length - 1];
+    if (last && String(last.author) === req.user.id) {
+      return res.status(400).json({ error: 'Wait for admin reply before posting again.' });
+    }
+
+    const created = await Comment.create({
+      feedbackId: id, author: req.user.id, authorRole: 'user', body
+    });
+    return res.status(201).json({ comment: serialize(created) });
+  } catch (err) {
+    console.error('addComment error:', err);
+    return res.status(500).json({ error: 'Could not add comment' });
   }
-}
+};
 
-module.exports = { addComment, listComments };
+function serialize(c) {
+  return {
+    id: c.id, feedbackId: c.feedbackId, author: c.author,
+    authorRole: c.authorRole, body: c.body, createdAt: c.createdAt, updatedAt: c.updatedAt
+  };
+}

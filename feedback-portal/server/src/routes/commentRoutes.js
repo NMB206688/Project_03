@@ -1,16 +1,11 @@
-// server/src/routes/commentRoutes.js
+const router = require('express').Router();
+const { listComments, addComment } = require('../controllers/commentController');
+const { requireAuth, requireAuthOptional } = require('../middleware/auth');
 
-const express = require('express');
-const router = express.Router({ mergeParams: true });
-// mergeParams lets us read :id from parent route (/feedback/:id)
+// list: must be authed and authorized by controller
+router.get('/feedback/:id/comments', requireAuthOptional, listComments);
 
-const { addComment, listComments } = require('../controllers/commentController');
-const { requireAuth, requireAdmin } = require('../middleware/auth');
-
-// List thread for a feedback item (anyone for demo; could lock down later)
-router.get('/', listComments);
-
-// Add an internal comment (admin only)
-router.post('/', requireAuth, requireAdmin, addComment);
+// add: must be authed (controller enforces finer rules)
+router.post('/feedback/:id/comments', requireAuth, addComment);
 
 module.exports = router;

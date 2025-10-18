@@ -1,0 +1,22 @@
+# dependencies
+client/node_modules/
+server/node_modules/
+
+# build outputs
+client/dist/
+server/dist/
+
+# env / local
+*.env
+*.env.*
+!.env.example
+*.local
+
+# logs
+*.log
+npm-debug.log*
+
+# misc cache
+.DS_Store
+.eslintcache
+.vscode/

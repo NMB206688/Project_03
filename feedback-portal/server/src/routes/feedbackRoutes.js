@@ -1,24 +1,14 @@
-// server/src/routes/feedbackRoutes.js
-
-const express = require('express');
-const router = express.Router();
-const commentRoutes = require('./commentRoutes');
-
-
+const router = require('express').Router();
 const { createFeedback, listFeedback, updateStatus } = require('../controllers/feedbackController');
-const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { requireAuth, requireAuthOptional, requireSuperAdmin } = require('../middleware/auth');
 
-// Submit feedback (anonymous allowed):
-// - If you include an Authorization header, we’ll link it to your user unless isAnonymous=true.
-router.post('/', createFeedback);
+// Create: allowed for everyone; if logged in and not anonymous, we attach createdBy
+router.post('/', requireAuthOptional, createFeedback);
 
-// List feedback (anyone can view; admin sees creator on anonymous items)
-router.get('/', listFeedback);
+// List: role-based visibility handled in controller; optional auth for UX
+router.get('/', requireAuthOptional, listFeedback);
 
-// Update status (admin only)
-router.patch('/:id/status', requireAuth, requireAdmin, updateStatus);
-// Nested routes: /api/v1/feedback/:id/comments
-router.use('/:id/comments', commentRoutes);
-
+// Status change: admin only
+router.patch('/:id/status', requireSuperAdmin, updateStatus);
 
 module.exports = router;

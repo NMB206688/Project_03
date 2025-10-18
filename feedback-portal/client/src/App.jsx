@@ -1,27 +1,58 @@
-// client/src/App.jsx
-import { Link, Routes, Route, Navigate } from "react-router-dom";
-import Login from "./pages/Login.jsx";
+import { Link, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Submit from "./pages/Submit.jsx";
+import Login from "./pages/Login.jsx";
+import Signup from "./pages/Signup.jsx";
 import Admin from "./pages/Admin.jsx";
+import AdminRoute from "./components/AdminRoute.jsx";
+import { getUser, isAuthed, logout } from "./auth";
 
-// Simple top nav for demo navigation.
-// Why inline styles? Keep this step tiny; we'll style later.
+function NavBar() {
+  const nav = useNavigate();
+  const authed = isAuthed();
+  const user = getUser();
+
+  function doLogout() {
+    logout();
+    nav("/login");
+  }
+
+  return (
+    <div className="nav">
+      <div style={{display:"flex", gap:12, alignItems:"center"}}>
+        <Link to="/">Submit</Link>
+        {authed && user?.role === "admin" && <Link to="/admin">Admin</Link>}
+      </div>
+      <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
+        {!authed ? (
+          <>
+            <Link to="/login">Login</Link>
+            <Link to="/signup">Signup</Link>
+          </>
+        ) : (
+          <>
+            <span className="badge">Hi, {user?.name}{user?.role === "admin" ? " (admin)" : ""}</span>
+            <button className="btn btn-secondary" onClick={doLogout}>Logout</button>
+          </>
+        )}
+        <span className="brand-badge">Feedback Portal</span>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
-    <div style={{ maxWidth: 900, margin: "40px auto", padding: 16 }}>
-      <header style={{ display: "flex", gap: 16, marginBottom: 24 }}>
-        <Link to="/">Submit</Link>
-        <Link to="/admin">Admin</Link>
-        <Link to="/login" style={{ marginLeft: "auto" }}>
-          Login
-        </Link>
-      </header>
-
+    <div className="app-shell">
+      <NavBar />
       <Routes>
         <Route path="/" element={<Submit />} />
-        <Route path="/admin" element={<Admin />} />
         <Route path="/login" element={<Login />} />
-        {/* Fallback */}
+        <Route path="/signup" element={<Signup />} />
+
+        <Route element={<AdminRoute />}>
+          <Route path="/admin" element={<Admin />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

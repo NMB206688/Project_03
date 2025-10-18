@@ -1,80 +1,64 @@
-// server/src/controllers/authController.js
-
-const User = require('../models/User');       // Our Mongoose model
+const bcrypt = require('bcryptjs');
+const User = require('../models/User');
 const { signToken } = require('../utils/jwt');
+const SUPER = (process.env.SUPERADMIN_EMAIL || '').toLowerCase();
 
-// Helper: basic field checks (keeps controller tidy)
-function requireFields(obj, fields) {
-  for (const f of fields) {
-    if (!obj[f] || String(obj[f]).trim() === '') {
-      return `Missing or empty field: ${f}`;
-    }
-  }
-  return null;
-}
-
-// POST /api/v1/auth/register
-// Body: { name, email, password, role? }
-// Why: creates a user, hashes password via model hook, returns a JWT.
-async function register(req, res) {
+exports.register = async (req, res) => {
   try {
-    // 1) Validate body quickly (lightweight MVP validation).
-    const err = requireFields(req.body, ['name', 'email', 'password']);
-    if (err) return res.status(400).json({ error: err });
+    const name = (req.body.name || '').trim();
+    const email = (req.body.email || '').trim().toLowerCase();
+    const password = (req.body.password || '').trim();
 
-    const { name, email, password, role } = req.body;
+    if (!name || !email || !password)
+      return res.status(400).json({ error: 'Name, email, and password are required' });
 
-    // 2) Create user (password hashing happens in User pre-save hook).
-    const user = await User.create({ name, email, password, role });
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ error: 'Email already registered' });
 
-    // 3) Sign JWT containing minimal claims (sub=id, role).
-    const token = signToken({ sub: user._id.toString(), role: user.role });
+    const role = email === SUPER ? 'admin' : 'user';
+    const hash = await bcrypt.hash(password, 10);
 
-    // 4) Return safe user info (never include password).
-    res.status(201).json({
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
-      token
+    const user = await User.create({ name, email, password: hash, role });
+    const token = signToken(user);
+
+    return res.status(201).json({
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      token,
     });
-  } catch (e) {
-    // Handle duplicate email cleanly (Mongo duplicate key error)
-    if (e.code === 11000 && e.keyPattern?.email) {
-      return res.status(409).json({ error: 'Email already registered' });
-    }
-    console.error('register error:', e);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (err) {
+    console.error('register error:', err);
+    // Handle duplicate key just in case
+    if (err?.code === 11000) return res.status(400).json({ error: 'Email already registered' });
+    return res.status(500).json({ error: 'Failed to register' });
   }
-}
+};
 
-// POST /api/v1/auth/login
-// Body: { email, password }
-// Why: verifies credentials then returns a JWT.
-async function login(req, res) {
+exports.login = async (req, res) => {
   try {
-    const err = requireFields(req.body, ['email', 'password']);
-    if (err) return res.status(400).json({ error: err });
+    const email = (req.body.email || '').trim().toLowerCase();
+    const password = (req.body.password || '').trim();
 
-    const { email, password } = req.body;
-
-    // 1) Find user and explicitly include password (it’s select:false in schema).
     const user = await User.findOne({ email }).select('+password');
-    if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-    // 2) Compare password using the model method.
-    const ok = await user.comparePassword(password);
-    if (!ok) return res.status(401).json({ error: 'Invalid email or password' });
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-    // 3) Sign token with id + role.
-    const token = signToken({ sub: user._id.toString(), role: user.role });
-
-    // 4) Return safe user profile + token.
-    res.json({
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
-      token
+    const token = signToken(user);
+    return res.json({
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      token,
     });
-  } catch (e) {
-    console.error('login error:', e);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (err) {
+    console.error('login error:', err);
+    return res.status(500).json({ error: 'Failed to login' });
   }
-}
+};
 
-module.exports = { register, login };
+exports.me = async (req, res) => {
+  return res.json({ user: req.user || null });
+};
+
+exports.adminPing = async (req, res) => {
+  return res.json({ ok: true, msg: 'admin access confirmed' });
+};

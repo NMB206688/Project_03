@@ -1,13 +1,10 @@
-// server/src/routes/authRoutes.js
+const router = require('express').Router();
+const { register, login, me, adminPing } = require('../controllers/authController');
+const { requireAuth, requireSuperAdmin } = require('../middleware/auth');
 
-const express = require('express');
-const router = express.Router();            // Isolated sub-router for /auth
-const { register, login } = require('../controllers/authController');
-
-// POST /api/v1/auth/register → create account
 router.post('/register', register);
-
-// POST /api/v1/auth/login → sign in
 router.post('/login', login);
+router.get('/me', requireAuth, me);
+router.get('/admin/ping', requireSuperAdmin, adminPing);
 
 module.exports = router;
