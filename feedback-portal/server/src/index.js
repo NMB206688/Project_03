@@ -1,3 +1,4 @@
+// server/src/index.js
 require("dotenv").config();
 
 const express = require("express");
@@ -11,6 +12,7 @@ const authRoutes = require("./routes/authRoutes");
 const feedbackRoutes = require("./routes/feedbackRoutes");
 const commentRoutes = require("./routes/commentRoutes");
 
+// --- Env ---
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI =
   process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/feedback_portal_dev";
@@ -18,16 +20,21 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
 
 const app = express();
 
-/** Behind proxies (Railway/Render/Heroku) so req.ip is correct for rate limiting/logs */
+// Behind proxies (Railway/Render/Heroku) so req.ip is correct for rate limiting/logs
 app.set("trust proxy", 1);
 
-app.use(helmet());
+// Security & basics
+app.use(
+  helmet({
+    // allow embedding if you ever preview on other origins
+    crossOriginResourcePolicy: false,
+  })
+);
 app.use(morgan("dev"));
 app.use(express.json({ limit: "1mb" }));
 
-/** --- CORS: allow single or comma-separated origins (or *) --- */
+// --- CORS: allow single or comma-separated origins (or "*") ---
 const allowedOrigins = CORS_ORIGIN.split(",").map((s) => s.trim());
-
 const corsOptions = {
   origin(origin, cb) {
     // Allow same-origin / curl / Postman (no Origin header)
@@ -39,12 +46,11 @@ const corsOptions = {
   },
   credentials: false,
 };
-
 app.use(cors(corsOptions));
 // Preflight support with same options
 app.options("*", cors(corsOptions));
 
-/** --- Rate limit all API routes (/api prefix covers /api/v1/...) --- */
+// --- Rate limit all API routes (/api prefix covers /api/v1/...) ---
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
@@ -53,7 +59,7 @@ const apiLimiter = rateLimit({
 });
 app.use("/api", apiLimiter);
 
-/** --- Health checks --- */
+// --- Health checks ---
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
@@ -69,19 +75,18 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-/** --- API routes --- */
+// --- API routes ---
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/feedback", feedbackRoutes);
 app.use("/api/v1", commentRoutes);
 
-/** --- 404 handler (IMPORTANT: no path string on Express v5) --- */
+// --- 404 handler (IMPORTANT: no path string on Express v5) ---
 app.use((req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-/** --- Centralized error handler --- */
+// --- Centralized error handler ---
 app.use((err, req, res, next) => {
-  // CORS errors or others will flow here
   console.error("Unhandled error:", err?.stack || err);
   if (err && err.message === "Not allowed by CORS") {
     return res.status(403).json({ error: "CORS blocked" });
@@ -89,14 +94,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-/** --- Start --- */
+// --- Start ---
 mongoose
   .connect(MONGODB_URI, { autoIndex: true })
   .then(() => {
     console.log("✅ Connected to MongoDB");
-    app.listen(PORT, () =>
-      console.log(`🚀 Server running at http://localhost:${PORT}`)
-    );
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
   })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
