@@ -18,30 +18,31 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
 
 const app = express();
 
-/** Behind proxies (Render, etc.) so req.ip is correct for rate limiting/logs */
+/** Behind proxies (Railway/Render/Heroku) so req.ip is correct for rate limiting/logs */
 app.set("trust proxy", 1);
 
 app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json({ limit: "1mb" }));
 
-/** --- CORS: allow single or comma-separated origins --- */
+/** --- CORS: allow single or comma-separated origins (or *) --- */
 const allowedOrigins = CORS_ORIGIN.split(",").map((s) => s.trim());
-app.use(
-  cors({
-    origin(origin, cb) {
-      // Allow same-origin / curl / Postman (no Origin header)
-      if (!origin) return cb(null, true);
-      if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
-        return cb(null, true);
-      }
-      return cb(new Error("Not allowed by CORS"));
-    },
-    credentials: false,
-  })
-);
-// Preflight support
-app.options("*", cors());
+
+const corsOptions = {
+  origin(origin, cb) {
+    // Allow same-origin / curl / Postman (no Origin header)
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+      return cb(null, true);
+    }
+    return cb(new Error("Not allowed by CORS"));
+  },
+  credentials: false,
+};
+
+app.use(cors(corsOptions));
+// Preflight support with same options
+app.options("*", cors(corsOptions));
 
 /** --- Rate limit all API routes (/api prefix covers /api/v1/...) --- */
 const apiLimiter = rateLimit({
@@ -72,6 +73,21 @@ app.get("/api/health", (req, res) => {
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/feedback", feedbackRoutes);
 app.use("/api/v1", commentRoutes);
+
+/** --- 404 handler (IMPORTANT: no path string on Express v5) --- */
+app.use((req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
+/** --- Centralized error handler --- */
+app.use((err, req, res, next) => {
+  // CORS errors or others will flow here
+  console.error("Unhandled error:", err?.stack || err);
+  if (err && err.message === "Not allowed by CORS") {
+    return res.status(403).json({ error: "CORS blocked" });
+  }
+  res.status(500).json({ error: "Internal server error" });
+});
 
 /** --- Start --- */
 mongoose
