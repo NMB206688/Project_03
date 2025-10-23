@@ -39,7 +39,8 @@ const corsOptions = {
   credentials: false,
 };
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // preflight
+// Express v5-safe preflight (avoid "*" path)
+app.options(/.*/, cors(corsOptions));
 
 // ---- Rate limit for all /api* routes ----
 const apiLimiter = rateLimit({
