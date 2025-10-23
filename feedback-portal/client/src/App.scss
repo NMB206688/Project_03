@@ -40,3 +40,22 @@
 .read-the-docs {
   color: #888;
 }
+
+// sanity check
+:root {
+  outline: none;
+}
+body {
+  // change the background slightly so we can see it took effect
+  background: radial-gradient(1200px 600px at 25% 10%, rgba(66, 153, 225, 0.12), transparent),
+              radial-gradient(1200px 600px at 85% 90%, rgba(236, 72, 153, 0.10), transparent);
+}
+
+/* keep page-level tweaks here if needed */
+/* Example centering helper for pages that use .centered wrapper */
+.centered {
+  min-height: calc(100vh - 140px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

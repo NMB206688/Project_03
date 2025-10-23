@@ -1,0 +1,236 @@
+
+@use "./styles/variables" as *;
+@use "./styles/mixins"     as *;
+
+$bg:       #0b1220 !default;   // dark base behind the gradient
+$text:     #e6e8ee !default;   // main text color
+$muted:    #93a0b8 !default;   // secondary text
+$brand-1:  #7c3aed !default;   // violet
+$brand-2:  #06b6d4 !default;   // cyan
+$shadow:   0 12px 40px rgba(0, 0, 0, .35) !default;
+
+$gap-1: 6px  !default;
+$gap-2: 10px !default;
+$gap-3: 14px !default;
+$gap-4: 20px !default;
+
+/* ----------
+   Page base
+   - We keep the root tall so our center layout has height to work with.
+---------- */
+html, body, #root {
+  height: 100%;
+  background: $bg;
+  color: $text;
+}
+
+/* ----------
+   Single gradient background (clean + modern)
+   - One gradient only, not multiple blended shapes.
+   - The slight opacity lets the dark base ($bg) peek through.
+---------- */
+body::before {
+  content: "";
+  position: fixed; inset: 0; z-index: -1;
+
+  /* 🎨 Change only these two colors if you want a different gradient */
+  background: linear-gradient(
+    135deg,
+    rgba($brand-1, .32) 0%,
+    rgba($brand-2, .32) 100%
+  );
+}
+
+/* ----------
+   Top shell (only holds the navbar).  No fixed widths here.
+---------- */
+.app-shell {
+  width: 100%;
+  max-width: 980px;
+  margin: 16px auto 0;
+  padding: 0 16px;
+}
+
+/* ----------
+   ABSOLUTE CENTERING FOR PAGES
+   - Every page component wraps its content with:
+       <div class="center-page"><div class="stack"> ... </div></div>
+   - This grid trick centers horizontally & vertically with one line.
+---------- */
+.center-page {
+  min-height: calc(100vh - 64px); /* viewport minus a bit of top breathing room */
+  display: grid;
+  place-items: center;             /* ✅ the centering magic */
+  width: 100vw;
+  padding: 24px 16px;
+}
+
+/* The vertical column that holds the card(s) */
+.center-page > .stack {
+  width: min(760px, 92vw);         /* good reading width + responsive clamp */
+  display: grid;
+  gap: $gap-3;
+  margin: 0 auto;                  /* redundant with grid center, but safe */
+}
+
+/* ----------
+   Navbar (stays at the top, not inside center-page)
+---------- */
+.nav {
+  @include card;
+  padding: $gap-2 $gap-4;
+  margin: 0 auto 12px;
+  display: flex;
+  gap: $gap-2;
+  align-items: center;
+  justify-content: center;
+
+  a {
+    padding: 8px 12px;
+    border-radius: 10px;
+    transition: transform .1s ease, background .2s ease;
+
+    &:hover {
+      background: rgba(255,255,255,.08);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+.brand-badge {
+  margin-left: 8px;
+  font-weight: 700;
+  background: linear-gradient(90deg, $brand-1, $brand-2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ----------
+   Cards & type
+---------- */
+.card, .card-full {
+  @include card;
+  padding: clamp(18px, 2.4vw, 26px);
+  width: 100%;
+  box-shadow: $shadow;
+}
+
+.h1 {
+  font-size: clamp(24px, 3.0vw, 32px);  /* bigger headings, responsive */
+  font-weight: 800;
+  margin: 0 0 12px;
+  text-align: center;
+}
+
+.p {
+  color: $muted;
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+/* ----------
+   Forms
+---------- */
+.row { display: grid; gap: $gap-3; }
+
+.input,
+.textarea,
+select.input {
+  @include input;
+  font-size: 16px;                 /* bigger inputs for readability */
+}
+
+.textarea { min-height: 140px; resize: vertical; }
+
+.help {
+  font-size: 12px;
+  color: $muted;
+  margin-top: 6px;
+  text-align: left;
+}
+
+/* Buttons */
+.btn           { @include btn(); font-size: 16px; }
+.btn-secondary { @include btn(#374151, #1f2937); }
+
+/* Alerts */
+.alert {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.35);
+  color: #fecaca;
+  font-size: 15px;
+  text-align: center;
+
+  &.success {
+    background: rgba(34,197,94,.12);
+    border-color: rgba(34,197,94,.35);
+    color: #bbf7d0;
+  }
+}
+
+/* Toggle switch */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+  justify-content: center;
+
+  input { display: none; }
+
+  .track {
+    width: 46px; height: 26px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.25);
+    position: relative;
+    transition: background .2s ease;
+
+    .thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: white;
+      transition: left .2s ease;
+    }
+  }
+
+  input:checked + .track      { background: linear-gradient(90deg, $brand-1, $brand-2); }
+  input:checked + .track .thumb { left: 22px; }
+}
+
+/* ----------
+   Admin table bits (unchanged)
+---------- */
+.table  { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
+.tr     { background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+          border: 1px solid rgba(255,255,255,.08); box-shadow: $shadow; border-radius: 14px; }
+.td, .th { padding: 12px 14px; text-align: left; }
+.tr {
+  .td:first-child, .th:first-child { border-top-left-radius: 14px; border-bottom-left-radius: 14px; }
+  .td:last-child,  .th:last-child  { border-top-right-radius: 14px; border-bottom-right-radius: 14px; }
+}
+
+/* Status chips & badges */
+.chip {
+  display: inline-block; padding: 6px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; letter-spacing:.2px;
+
+  &.open      { background: rgba(59,130,246,.15); color: #bfdbfe; border: 1px solid rgba(59,130,246,.35); }
+  &.in_review { background: rgba(245,158,11,.15); color: #fde68a; border: 1px solid rgba(245,158,11,.35); }
+  &.resolved  { background: rgba(34,197,94,.15); color: #bbf7d0; border: 1px solid rgba(34,197,94,.35); }
+}
+.badge { padding: 6px 10px; border-radius: 10px; background: rgba(255,255,255,.08); color: $text; border:1px solid rgba(255,255,255,.12); }
+
+/* ----------
+   Responsive touch-ups
+---------- */
+@media (max-width: 640px) {
+  .center-page { padding: 16px; }
+  .center-page > .stack { width: 92vw; }
+  .card { padding: 18px; }
+  .h1   { font-size: 24px; }
+}

@@ -1,0 +1,127 @@
+:root {
+  --app-bg: #0b1220; /* your dark background */
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: var(--app-bg); /* keep for safety */
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover { color: #535bf2; }
+
+/* --- body: base sizing, NO global centering --- */
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* Headings & buttons (from Vite starter) */
+h1 { font-size: 3.2em; line-height: 1.1; }
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover { border-color: #646cff; }
+button:focus,
+button:focus-visible { outline: 4px auto -webkit-focus-ring-color; }
+
+@media (prefers-color-scheme: light) {
+  :root { color: #213547; background-color: #ffffff; }
+  a:hover { color: #747bff; }
+  button { background-color: #f9f9f9; }
+}
+
+/* Minimal reset + base */
+* { box-sizing: border-box; }
+
+/* === Force a single consistent dark background === */
+html, body, #root {
+  height: 100%;
+  background-color: var(--app-bg) !important;
+  background-image: none !important;
+}
+
+/* Some templates add decorative pseudo-elements; kill them */
+body::before, #root::before {
+  content: none !important;
+  display: none !important;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; }
+
+/* === Page centering utility (used by Submit.jsx) === */
+.page-center {
+  min-height: 100dvh;          /* fills the viewport reliably */
+  display: flex;
+  align-items: center;          /* vertical center */
+  justify-content: center;      /* horizontal center */
+  padding: 1rem;
+}
+
+/* Optional: slightly tighter default spacing inside cards on this page */
+.form-card form.row { gap: 12px; } /* same as inline, keeps things compact */
+
+//* Make any page content hard-center horizontally */
+.container-center {
+  width: 100%;
+  max-width: 1000px;   /* same width you use in Admin */
+  margin-left: auto;   /* center horizontally */
+  margin-right: auto;  /* center horizontally */
+}
+
+/* Optional: ensure children don't introduce weird widths */
+.container-center > * {
+  width: 100%;
+}
+
+/* ---- Admin toolbar: keep on one line on wide screens ---- */
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;         /* single line on desktop */
+}
+
+/* Inputs inside toolbar should not stretch to 100% by default */
+.toolbar-row .input {
+  width: auto;
+}
+
+/* Let the search box absorb extra space so everything fits one line */
+.toolbar-row .grow {
+  flex: 1 1 320px;           /* grows, but can shrink if needed */
+  min-width: 220px;          /* avoid collapsing too small */
+}
+
+/* On smaller screens, allow wrapping gracefully */
+@media (max-width: 768px) {
+  .toolbar-row {
+    flex-wrap: wrap;
+  }
+  .toolbar-row .grow {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}

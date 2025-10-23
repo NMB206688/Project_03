@@ -1,0 +1,45 @@
+@use "./variables" as *;
+
+/* Card surface */
+@mixin card {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border: 1px solid $inner-border;
+  border-radius: $radius;
+  box-shadow: $shadow;
+  backdrop-filter: blur(4px);
+}
+
+/* Inputs / selects / textareas */
+@mixin input {
+  appearance: none;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: $radius-sm;
+  border: 1px solid rgba(255,255,255,.15);
+  background: rgba(14,22,38,.7);
+  color: $text;
+  outline: none;
+  transition: box-shadow .15s ease, border-color .15s ease;
+
+  &::placeholder { color: rgba(231,236,248,.45); }
+
+  &:focus {
+    border-color: rgba(139,92,246,.55);
+    box-shadow: 0 0 0 3px rgba(139,92,246,.25);
+  }
+}
+
+/* Buttons */
+@mixin btn($from: $brand-1, $to: $brand-2) {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 10px 16px; font-weight: 800;
+  border-radius: $radius-sm; cursor: pointer; user-select: none;
+  border: 1px solid rgba(255,255,255,.12);
+  background: linear-gradient(90deg, $from, $to);
+  color: white; text-shadow: 0 1px 0 rgba(0,0,0,.25);
+  transition: transform .06s ease, filter .15s ease, opacity .15s ease;
+
+  &:hover   { filter: brightness(1.05); }
+  &:active  { transform: translateY(1px); }
+  &:disabled{ opacity: .6; cursor: not-allowed; }
+}

@@ -1,0 +1,27 @@
+/* =========================================================
+   DESIGN TOKENS / VARIABLES
+   ========================================================= */
+
+/* Brand */
+$brand-1: #8b5cf6; // violet
+$brand-2: #06b6d4; // cyan
+
+/* Surface + text */
+$bg: #0b1220;
+$text: #e7ecf8;
+$muted: rgba(231,236,248,.7);
+
+/* Spacing scale */
+$gap-1: 6px;
+$gap-2: 10px;
+$gap-3: 16px;
+$gap-4: 24px;  // <-- used by theme.scss
+$gap-5: 32px;
+
+/* Radii */
+$radius: 14px;
+$radius-sm: 10px;
+
+/* Shadows */
+$shadow: 0 8px 25px rgba(0,0,0,.35);
+$inner-border: rgba(255,255,255,.08);

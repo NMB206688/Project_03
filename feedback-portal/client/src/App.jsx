@@ -1,3 +1,4 @@
+import "./App.scss";
 import { Link, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Submit from "./pages/Submit.jsx";
 import Login from "./pages/Login.jsx";
