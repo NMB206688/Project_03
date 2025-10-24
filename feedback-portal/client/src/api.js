@@ -1,18 +1,25 @@
+// client/src/lib/api.js
 import axios from "axios";
 import { getToken } from "./auth";
 
-// Resolve base URL in a flexible, safe way.
+/**
+ * Resolve the API base:
+ * - VITE_API_BASE (preferred) should point to "/api" or full "https://.../api"
+ * - VITE_API_URL is accepted as a fallback
+ * - Default to same-origin "/api"
+ */
 const rawBase =
-  import.meta.env.VITE_API_BASE ||             // your current env var
-  import.meta.env.VITE_API_URL ||              // optional fallback name
-  `${window.location.origin}/api`;             // same-origin default
+  import.meta.env.VITE_API_BASE ||
+  import.meta.env.VITE_API_URL ||
+  `${window.location.origin}/api`;
 
-// Normalize: remove trailing slashes so "/feedback" doesn't become "//feedback"
+// Normalize trailing slashes, then append "/v1" because server mounts routes at /api/v1/*
 const API_BASE = String(rawBase).replace(/\/+$/, "");
+const API_BASE_V1 = `${API_BASE}/v1`;
 
-// Create a preconfigured axios instance
+// Shared axios instance
 const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: API_BASE_V1,
   timeout: 15000,
   headers: {
     Accept: "application/json",
@@ -26,7 +33,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// --- Auth endpoints ---
+// ---- Auth endpoints (/api/v1/auth/...) ----
 export const AuthAPI = {
   login(email, password) {
     return api.post("/auth/login", { email, password });
@@ -36,7 +43,7 @@ export const AuthAPI = {
   },
 };
 
-// --- Feedback endpoints ---
+// ---- Feedback endpoints (/api/v1/feedback...) ----
 export const FeedbackAPI = {
   create({ title, body, category = "other", isAnonymous = true }) {
     return api.post("/feedback", { title, body, category, isAnonymous });
