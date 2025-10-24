@@ -1,0 +1,24 @@
+/* client/src/styles/_forms.scss */
+
+/* Inline label + input */
+.field.inline {
+  display: grid;
+  grid-template-columns: 140px 1fr; /* label | input */
+  align-items: center;
+  gap: 12px;
+}
+
+.field-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Mobile: stack vertically */
+@media (max-width: 560px) {
+  .field.inline {
+    grid-template-columns: 1fr; /* stack */
+  }
+  .field-label {
+    margin-bottom: 6px;
+  }
+}

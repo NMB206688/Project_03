@@ -8,12 +8,12 @@ const cors = require("cors");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 
-// Routes
+// --- Routes ---
 const authRoutes = require("./routes/authRoutes");
 const feedbackRoutes = require("./routes/feedbackRoutes");
 const commentRoutes = require("./routes/commentRoutes");
 
-// ---- Config ----
+// --- Config ---
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI =
   process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/feedback_portal_dev";
@@ -23,28 +23,27 @@ const CORS_ORIGIN =
   process.env.CORS_ORIGIN ||
   "http://localhost:5173,http://127.0.0.1:5173";
 
-// ---- App ----
+// --- App ---
 const app = express();
 
-// behind proxies (Railway/Render/Vercel/Heroku) so req.ip works correctly
+// Behind reverse proxy (Railway/Vercel/Render/Heroku)
 app.set("trust proxy", 1);
 
-// security & basics
+// Security & basics
 app.use(
   helmet({
-    // allow embedding if your frontend needs it; otherwise remove this
+    // allow embedding/cross-origin assets if your client loads from a different origin
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
 app.use(morgan("dev"));
 app.use(express.json({ limit: "1mb" }));
 
-// ---- CORS ----
-// Support: multiple origins, "*", Authorization header, and non-GET methods
+// --- CORS (v5-safe) ---
 const allowedOrigins = CORS_ORIGIN.split(",").map((s) => s.trim());
 const corsOptions = {
   origin(origin, cb) {
-    // Allow same-origin / curl / Postman (no Origin header)
+    // allow same-origin / curl / Postman (no Origin header)
     if (!origin) return cb(null, true);
     if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
       return cb(null, true);
@@ -57,46 +56,40 @@ const corsOptions = {
   exposedHeaders: ["Authorization"],
 };
 app.use(cors(corsOptions));
-// Preflight for all routes
-//app.options("*", cors(corsOptions));
+// NOTE: In Express v5, DO NOT use app.options("*", ...) — it will crash.
+// If you ever need an explicit OPTIONS route, use a v5-safe pattern like:
+// app.options("/(.*)", cors(corsOptions));
 
-// ---- Rate limit everything under /api ----
+// --- Rate limit everything under /api ---
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
+  windowMs: 15 * 60 * 1000,
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
 });
 app.use("/api", apiLimiter);
 
-// ---- Health checks ----
+// --- Health checks ---
 app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
+  res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 app.get("/api/health", (req, res) => {
-  res.json({
-    status: "ok",
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
+  res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
-// ---- API routes ----
+// --- API routes ---
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/feedback", feedbackRoutes);
 app.use("/api/v1", commentRoutes);
 
-// ---- 404 (Express v5-safe; NO "*" wildcard) ----
+// --- 404 (Express v5-safe; NO "*" wildcard) ---
 app.use((req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-// ---- Centralized error handler ----
+// --- Centralized error handler ---
 app.use((err, req, res, next) => {
+  // eslint-disable-next-line no-console
   console.error("Unhandled error:", err?.stack || err);
   if (err?.message === "Not allowed by CORS") {
     return res.status(403).json({ error: "CORS blocked" });
@@ -104,16 +97,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-// ---- Start ----
+// --- Start ---
 mongoose
   .connect(MONGODB_URI, { autoIndex: true })
   .then(() => {
     console.log("✅ Connected to MongoDB");
     console.log("➡️  CORS_ORIGIN:", CORS_ORIGIN);
     console.log("➡️  Allowed origins parsed:", allowedOrigins);
-    app.listen(PORT, () =>
-      console.log(`🚀 Server running on port ${PORT}`)
-    );
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);

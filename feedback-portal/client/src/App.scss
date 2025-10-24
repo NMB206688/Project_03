@@ -1,3 +1,7 @@
+/* client/src/App.scss (or client/src/styles/theme.scss or main.scss) */
+@import "./styles/_forms.scss";
+
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -59,3 +63,41 @@ body {
   align-items: center;
   justify-content: center;
 }
+
+/* Compact page spacing so the card sits closer to the top navbar. */
+
+/* your existing .page-wrap probably has min-height and centers content;
+   we override those behaviors only when .page-compact is present */
+.page-wrap.page-compact {
+  /* don't force the whole viewport height */
+  min-height: auto;
+
+  /* stop vertical centering; just stack normally */
+  display: block;
+
+  /* give a small, consistent top gap under the navbar */
+  padding-top: 24px;   /* tweak 16–32px to your taste */
+  padding-bottom: 24px;
+}
+
+/* Optional: if your .container-center adds extra spacing, neutralize it here */
+.page-wrap.page-compact .container-center {
+  margin-top: 0;
+}
+
+/* compact spacing under the top bar */
+.page-wrap.page-compact {
+  min-height: auto;
+  display: block;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+/* two-column label/input form layout with full-width utility */
+.form-two-col {
+  display: grid;
+  grid-template-columns: 140px 1fr; /* adjust 120–160px to your taste */
+  align-items: center;
+  gap: 12px 16px;
+}
+.form-two-col .full { grid-column: 1 / -1; }

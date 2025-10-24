@@ -1,29 +1,27 @@
 // server/src/routes/feedbackRoutes.js
-const router = require("express").Router();
+const express = require("express");
+const router = express.Router();
+
 const {
   createFeedback,
   listFeedback,
   updateStatus,
 } = require("../controllers/feedbackController");
+
 const {
-  authOptional,
-  adminOnly,
-  // backward-compat aliases, if other modules use them
-  requireAuthOptional,
-  requireSuperAdmin,
+  authOptional,  // reads user from token if present; otherwise continues
+  ensureAdmin,   // [authRequired, adminOnly]
 } = require("../middleware/auth");
 
-// Create: anyone can post; if logged in and not anonymous, controller can use req.user
-router.post("/", authOptional /* or requireAuthOptional */, createFeedback);
+// Create feedback
+// - Public allowed (anonymous), but if a valid token is present we save createdBy.
+router.post("/", authOptional, createFeedback);
 
-// List: optional auth for UX (admins may see more fields, handled in controller)
-router.get("/", authOptional /* or requireAuthOptional */, listFeedback);
+// List feedback
+// - Public listing allowed; if a token is present, controller can tailor results.
+router.get("/", authOptional, listFeedback);
 
-// Status change: admin only (PATCH /api/v1/feedback/:id/status)
-router.patch(
-  "/:id/status",
-  adminOnly /* or requireSuperAdmin */,
-  updateStatus
-);
+// Update feedback status (admin only)
+router.patch("/:id/status", ensureAdmin, updateStatus);
 
 module.exports = router;

@@ -7,6 +7,8 @@ import Admin from "./pages/Admin.jsx";
 import AdminRoute from "./components/AdminRoute.jsx";
 import { getUser, isAuthed, logout } from "./auth";
 
+
+
 function NavBar() {
   const nav = useNavigate();
   const authed = isAuthed();

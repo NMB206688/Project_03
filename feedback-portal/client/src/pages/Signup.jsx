@@ -1,3 +1,4 @@
+// client/src/pages/Signup.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthAPI } from "../api";
@@ -27,7 +28,7 @@ export default function Signup() {
   }
 
   return (
-    <main className="page-center">
+    <main className="page-wrap page-compact">
       <div className="stack" style={{ width: "100%", maxWidth: 520 }}>
         <div className="card" style={{ width: "100%" }}>
           <h1 className="h1" style={{ textAlign: "center" }}>Create account</h1>
@@ -36,8 +37,9 @@ export default function Signup() {
           </p>
 
           <form className="row" onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-            <label>
-              <div style={{ marginBottom: 6, color: "var(--muted)" }}>Name</div>
+            {/* Name */}
+            <label className="field inline">
+              <span className="field-label">Name</span>
               <input
                 className="input"
                 value={name}
@@ -47,8 +49,9 @@ export default function Signup() {
               />
             </label>
 
-            <label>
-              <div style={{ marginBottom: 6, color: "var(--muted)" }}>Email</div>
+            {/* Email */}
+            <label className="field inline">
+              <span className="field-label">Email</span>
               <input
                 className="input"
                 type="email"
@@ -59,8 +62,9 @@ export default function Signup() {
               />
             </label>
 
-            <label>
-              <div style={{ marginBottom: 6, color: "var(--muted)" }}>Password</div>
+            {/* Password */}
+            <label className="field inline">
+              <span className="field-label">Password</span>
               <input
                 className="input"
                 type="password"
@@ -68,6 +72,7 @@ export default function Signup() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                autoComplete="new-password"
               />
             </label>
 

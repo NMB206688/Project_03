@@ -1,24 +1,86 @@
+// client/src/auth.js
+
+const TOKEN_KEY = "fp_token";
+const USER_KEY = "fp_user";
+
+/** Safe window guard (prevents errors in odd environments) */
+function hasWindow() {
+  return typeof window !== "undefined" && window.localStorage && window.sessionStorage;
+}
+
+/** Pick the right storage based on remember flag */
+function pickStore(remember) {
+  if (!hasWindow()) return null;
+  return remember ? window.localStorage : window.sessionStorage;
+}
+
+/** Save token. If remember=false, keep it in sessionStorage only */
+export function setToken(token, remember = false) {
+  const store = pickStore(remember);
+  if (!store) return;
+
+  if (token) {
+    store.setItem(TOKEN_KEY, token);
+  } else {
+    store.removeItem(TOKEN_KEY);
+  }
+
+  // remove stale copy from the other store
+  const other = remember ? window.sessionStorage : window.localStorage;
+  other.removeItem(TOKEN_KEY);
+}
+
+/** Read token from either place (session first, then local) */
 export function getToken() {
-  return sessionStorage.getItem("token") || localStorage.getItem("token") || null;
+  if (!hasWindow()) return null;
+  return (
+    window.sessionStorage.getItem(TOKEN_KEY) ||
+    window.localStorage.getItem(TOKEN_KEY) ||
+    null
+  );
 }
+
+/** Save user object (mirrors setToken behavior) */
+export function setUser(user, remember = false) {
+  const store = pickStore(remember);
+  if (!store) return;
+
+  if (user) {
+    store.setItem(USER_KEY, JSON.stringify(user));
+  } else {
+    store.removeItem(USER_KEY);
+  }
+
+  const other = remember ? window.sessionStorage : window.localStorage;
+  other.removeItem(USER_KEY);
+}
+
+/** Read user object from either place */
 export function getUser() {
-  const raw = sessionStorage.getItem("user") || localStorage.getItem("user") || null;
-  try { return raw ? JSON.parse(raw) : null; } catch { return null; }
-}
-export function isAuthed() { return !!getToken(); }
-
-export function setAuth({ token, user, remember = false }) {
-  clearAuth();
-  const store = remember ? localStorage : sessionStorage;
-  store.setItem("token", token);
-  store.setItem("user", JSON.stringify(user));
-}
-
-export function clearAuth() {
+  if (!hasWindow()) return null;
   try {
-    sessionStorage.removeItem("token"); sessionStorage.removeItem("user");
-    localStorage.removeItem("token"); localStorage.removeItem("user");
-  } catch {}
+    const raw =
+      window.sessionStorage.getItem(USER_KEY) ||
+      window.localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }
 
-export function logout(){ clearAuth(); }
+/** True if we have a token */
+export function isAuthed() {
+  return !!getToken();
+}
+
+/** Clear everything (token + user) from both stores */
+export function clearAuth() {
+  if (!hasWindow()) return;
+  window.localStorage.removeItem(TOKEN_KEY);
+  window.sessionStorage.removeItem(TOKEN_KEY);
+  window.localStorage.removeItem(USER_KEY);
+  window.sessionStorage.removeItem(USER_KEY);
+}
+
+/** Optional alias so you can `import { logout } from "./auth"` */
+export const logout = clearAuth;
