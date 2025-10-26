@@ -56,9 +56,10 @@ const corsOptions = {
   exposedHeaders: ["Authorization"],
 };
 app.use(cors(corsOptions));
+//app.options("*", cor(corsOptions));
 // NOTE: In Express v5, DO NOT use app.options("*", ...) — it will crash.
 // If you ever need an explicit OPTIONS route, use a v5-safe pattern like:
-// app.options("/(.*)", cors(corsOptions));
+//app.options("/(.*)", cors(corsOptions));
 
 // --- Rate limit everything under /api ---
 const apiLimiter = rateLimit({
